@@ -110,4 +110,4 @@ jobs:
         run: uv pip install dist/*.whl
 
       - name: Verify installation
-        run: python -c "from app import add, divide; print(add(1,2)); print(divide(10,2))"
+        run: uv run python -c "from app import add, divide; print(add(1,2)); print(divide(10,2))"
