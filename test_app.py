@@ -1,4 +1,5 @@
 import pytest
+
 from app import add, divide
 
 
