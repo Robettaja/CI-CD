@@ -1,1 +1,97 @@
+name: CI/CD Pipeline
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ========== LINT & TEST ==========
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Install linting tools
+        run: uv pip install ruff mypy
+
+      - name: Run ruff (lint)
+        run: uv run ruff check .
+
+      - name: Run ruff (format check)
+        run: uv run ruff format --check .
+
+      - name: Run mypy (type check)
+        run: uv run mypy app.py test_app.py
+
+      - name: Run tests
+        run: uv run pytest test_app.py -v
+
+  # ========== BUILD ==========
+  build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: uv pip install build
+
+      - name: Build package (sdist + wheel)
+        run: uv run python -m build
+
+      - name: Create requirements.txt
+        run: uv pip freeze > requirements.txt
+
+      - name: Create demo app zip artifact
+        run: |
+          mkdir -p dist
+          zip -j dist/demo-app.zip app.py requirements.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  # ========== TEST INSTALL FROM ARTIFACT ==========
+  test-install:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install package from artifact
+        run: uv pip install dist/*.whl
+
+      - name: Verify installation
+        run: python -c "from app import add, divide; print(add(1,2)); print(divide(10,2))"
