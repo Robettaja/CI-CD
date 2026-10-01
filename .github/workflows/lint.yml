@@ -36,3 +36,6 @@ jobs:
 
       - name: Run mypy (type check)
         run: uv run mypy app.py test_app.py
+
+      - name: Run tests
+        run: uv run pytest test_app.py -v
